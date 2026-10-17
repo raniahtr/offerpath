@@ -4,8 +4,12 @@ version = "0.1.0"
 description = "Offerpath backend: internship tracking, posting matching, CV tailoring."
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115",           # web framework
-    "uvicorn[standard]>=0.30",  # ASGI server that runs the app
+    "fastapi>=0.115",             # web framework
+    "uvicorn[standard]>=0.30",    # ASGI server that runs the app
+    "sqlalchemy>=2.1.5",          # ORM: Python classes <-> database tables
+    "psycopg[binary]>=3.3.6",     # Postgres driver used by SQLAlchemy
+    "alembic>=1.20.0",            # versioned database schema migrations
+    "pydantic-settings>=2.16.0",  # typed, validated config from env vars
 ]
 
 [dependency-groups]
