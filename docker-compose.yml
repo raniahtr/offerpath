@@ -13,6 +13,8 @@ services:
       # Named volume: database files live outside the container, so data survives
       # `docker compose down` and restarts. (`down -v` deletes it.)
       - pgdata:/var/lib/postgresql/data
+      # Init scripts run only when the volume is first created (creates the test database).
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       # "Healthy" = Postgres accepts connections. $$ escapes $ so the variable is expanded
       # inside the container, not by compose.
@@ -26,9 +28,12 @@ services:
       context: ./api
       args:
         INSTALL_DEV: "true" # include pytest/ruff so `docker compose exec api pytest` works
-    # Overrides the Dockerfile CMD for dev: --reload restarts the server when code changes;
-    # --reload-dir limits watching to app code (not caches or a local .venv).
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    # Overrides the Dockerfile CMD for dev: first apply pending migrations, then start the
+    # server. --reload restarts it when code changes; --reload-dir limits watching to app code
+    # (not caches or a local .venv). `sh -c` is needed to chain two commands with &&.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
     env_file: .env
     ports:
       - "127.0.0.1:8000:8000"
