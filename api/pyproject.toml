@@ -1,0 +1,27 @@
+[project]
+name = "offerpath-api"
+version = "0.1.0"
+description = "Offerpath backend: internship tracking, posting matching, CV tailoring."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",           # web framework
+    "uvicorn[standard]>=0.30",  # ASGI server that runs the app
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",   # test runner
+    "httpx2>=2.13", # required by FastAPI's TestClient
+    "ruff>=0.6",   # linter + formatter
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes basics, I: import sorting, UP: modern syntax, B: likely bugs
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
