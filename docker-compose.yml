@@ -6,8 +6,8 @@ services:
     # Injects POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB from .env.
     env_file: .env
     ports:
-      # host:container. Bound to 127.0.0.1 so only your Mac (not your network) can connect,
-      # e.g. with psql or a DB GUI.
+      # host:container. Bound to 127.0.0.1 so only the local machine (not the network) can
+      # connect, e.g. with psql or a DB GUI.
       - "127.0.0.1:5432:5432"
     volumes:
       # Named volume: database files live outside the container, so data survives
@@ -27,13 +27,13 @@ services:
       args:
         INSTALL_DEV: "true" # include pytest/ruff so `docker compose exec api pytest` works
     # Overrides the Dockerfile CMD for dev: --reload restarts the server when code changes;
-    # --reload-dir limits watching to app code (not caches or your local .venv).
+    # --reload-dir limits watching to app code (not caches or a local .venv).
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
     env_file: .env
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      # Bind mount: your ./api folder appears at /app, so edits on your Mac are seen
+      # Bind mount: the host's ./api folder appears at /app, so code edits are seen
       # instantly inside the container without rebuilding the image.
       - ./api:/app
     depends_on:

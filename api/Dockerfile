@@ -5,7 +5,7 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
 
 # UV_PROJECT_ENVIRONMENT: put the venv in /opt/venv, OUTSIDE /app. In local dev, compose
-#   mounts your ./api folder over /app; a venv inside /app would be hidden by that mount.
+#   mounts the host's ./api folder over /app; a venv inside /app would be hidden by that mount.
 # UV_PYTHON_DOWNLOADS=never: use the image's Python, never download another one.
 # UV_COMPILE_BYTECODE=1: precompile .pyc files at build time → faster container startup.
 # PYTHONUNBUFFERED=1: print logs immediately instead of buffering them (so `docker logs` is live).
@@ -30,7 +30,7 @@ RUN chown appuser:appuser /app
 ARG INSTALL_DEV=false
 
 # Copy ONLY the dependency files first. Docker caches each step ("layer"); as long as these
-# files don't change, the slow install below is reused even when your code changes.
+# files don't change, the slow install below is reused even when the code changes.
 COPY pyproject.toml uv.lock .python-version ./
 # --frozen: install exactly what uv.lock says; fail instead of re-resolving versions.
 RUN if [ "$INSTALL_DEV" = "true" ]; then uv sync --frozen; else uv sync --frozen --no-dev; fi
