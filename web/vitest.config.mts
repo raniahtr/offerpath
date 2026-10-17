@@ -9,8 +9,13 @@ export default defineConfig({
   test: {
     // jsdom = a simulated browser (document, window) so components can render in Node.
     environment: "jsdom",
-    // Unmount rendered components and reset mocks between tests so they can't leak state.
+    // Unmount rendered components and reset mocks, stubbed globals (fetch) and stubbed
+    // env vars between tests so they can't leak state.
     setupFiles: ["./vitest.setup.ts"],
+    // mockReset clears vi.fn() call history and canned responses; restoreMocks undoes vi.spyOn.
+    mockReset: true,
     restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
   },
 });
