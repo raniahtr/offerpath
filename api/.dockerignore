@@ -1,0 +1,11 @@
+# Files never sent to `docker build` (the "build context"):
+# the local venv is macOS-specific and huge; caches are regenerated; secrets must not leak.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+Dockerfile
+.dockerignore
