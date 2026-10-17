@@ -22,6 +22,24 @@ jobs:
     defaults:
       run:
         working-directory: api
+    # Service container: GitHub starts this Postgres next to the job and waits for its
+    # healthcheck before running the steps. Reachable at localhost:5432 from the job.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: offerpath
+          POSTGRES_PASSWORD: offerpath # throwaway CI-only database, not a real secret
+          POSTGRES_DB: offerpath_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U offerpath -d offerpath_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://offerpath:offerpath@localhost:5432/offerpath_test
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@v10.2.0
@@ -33,6 +51,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      # Tests run the migrations themselves (down to base, then up to head) before testing.
       - run: uv run pytest
 
   api-docker:
