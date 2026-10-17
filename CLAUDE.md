@@ -54,8 +54,13 @@ docker compose exec api alembic upgrade head   # apply migrations (also runs on 
 docker compose exec api alembic revision --autogenerate -m "<message>"  # new migration from model changes
 docker compose exec api alembic check          # fail if models and migrations are out of sync
 docker compose down -v             # reset the local db volume (re-runs infra/db/init.sql)
-cd web && npm run dev              # frontend dev server
-cd web && npm run lint && npm test
+cd web && fnm use                  # Node version from web/.node-version (fnm's shell hook does this on cd)
+cd web && npm ci                   # install exact frontend deps from package-lock.json
+cp web/.env.example web/.env.local # first-time setup: NEXT_PUBLIC_API_URL for the frontend
+cd web && npm run dev              # frontend dev server on :3000 (start the compose api first)
+cd web && npm run lint && npm test # ESLint + Prettier check, Vitest (API mocked, no backend needed)
+cd web && npm run format           # apply Prettier formatting
+cd web && npm run build            # production build, also type-checks the app
 ```
 Keep this section up to date when commands change.
 

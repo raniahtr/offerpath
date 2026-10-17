@@ -1,0 +1,8 @@
+# Generated files: never hand-formatted
+.next/
+out/
+coverage/
+next-env.d.ts
+package-lock.json
+# Rewritten by `next dev` itself
+AGENTS.md

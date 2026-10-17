@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Offerpath palette (from the design mockup): pine ink text, sage accents, mist background.
+   @theme turns each --color-* into Tailwind utilities, e.g. bg-mist, text-pine, border-line. */
+@theme {
+  --color-pine: #24312a;
+  --color-sage: #3e6b4f;
+  --color-sage-dark: #2c4f39;
+  --color-sage-soft: #dce7db;
+  --color-mist: #eef0e6;
+  --color-surface: #fafbf6;
+  --color-line: #d6dbcb;
+  --color-muted: #5c665e;
+  --color-amber: #9a5b13;
+  --color-amber-soft: #f6e7cf;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-mist);
+  color: var(--color-pine);
+}

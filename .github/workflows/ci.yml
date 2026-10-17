@@ -61,3 +61,27 @@ jobs:
       - uses: actions/checkout@v7.0.1
       # Fails the check if the production image no longer builds.
       - run: docker build ./api
+
+  web:
+    name: Web lint + tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          # Same file fnm reads locally, so CI and your machine use the same Node major.
+          node-version-file: web/.node-version
+          # Caches npm's download cache (~/.npm), keyed on the lockfile, so installs
+          # don't re-download every package. node_modules itself is never cached.
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # Clean install of the exact versions in package-lock.json; fails if the lockfile
+      # and package.json disagree (unlike `npm install`, which would silently update it).
+      - run: npm ci
+      - run: npm run lint # ESLint + Prettier check
+      - run: npm test # Vitest, single run; the API is mocked, so no backend is needed
+      # Production build: also type-checks the whole app, which tests alone don't.
+      - run: npm run build
