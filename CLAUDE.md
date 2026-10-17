@@ -48,9 +48,12 @@ docker-compose.yml
 cp .env.example .env               # first-time setup: local env vars
 docker compose up --build          # start api + db locally
 docker compose exec api pytest     # run backend tests
-cd api && uv run pytest            # run backend tests without Docker
+cd api && uv run pytest            # run backend tests without Docker (needs the compose db running)
 cd api && uv run ruff check . && uv run ruff format --check .  # lint
-docker compose exec api alembic upgrade head   # apply migrations
+docker compose exec api alembic upgrade head   # apply migrations (also runs on api startup)
+docker compose exec api alembic revision --autogenerate -m "<message>"  # new migration from model changes
+docker compose exec api alembic check          # fail if models and migrations are out of sync
+docker compose down -v             # reset the local db volume (re-runs infra/db/init.sql)
 cd web && npm run dev              # frontend dev server
 cd web && npm run lint && npm test
 ```
