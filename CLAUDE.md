@@ -1,0 +1,92 @@
+# Offerpath
+
+Track internship applications, find matching postings, and tailor a CV to each one.
+
+Single-user tool first, public portfolio project second. Code quality, tests and a clear
+deployment pipeline matter as much as features.
+
+Developer-specific context (background, preferences) lives in `CLAUDE.local.md`, which is git-ignored.
+
+## Working agreement
+- **Plan before coding.** For any non-trivial feature, propose a short plan (files touched, data model changes, tests) and wait for approval.
+- **Thin vertical slices.** One feature end to end (DB → API → UI → test) before starting the next.
+- **Explain infrastructure.** For Dockerfiles, docker-compose, GitHub Actions, deploy configs and migrations, explain what each non-obvious line does and why. Don't silently generate infra.
+- **Small, reviewable changes.** Prefer several small commits over one large one; suggest a commit after each working step.
+- **Ask, don't guess,** when a requirement is ambiguous or a choice is hard to undo (schema design, auth, hosting).
+- Keep dependencies minimal. Justify any new library in one line.
+
+## Stack
+| Layer | Choice |
+|---|---|
+| Frontend | Next.js (App Router) + TypeScript + Tailwind, in `/web` |
+| Backend | FastAPI + Pydantic v2 + SQLAlchemy 2.0, in `/api` (deps managed with uv) |
+| Database | Postgres 16 with pgvector; migrations with Alembic |
+| LLM | Claude API, structured outputs validated with Pydantic |
+| Local dev | Docker Compose (api + db) |
+| CI | GitHub Actions: lint + tests on every PR |
+| Hosting | Vercel (web), Render (api), Neon or Supabase (db) |
+
+## Repository layout
+```
+/web        Next.js frontend
+/api        FastAPI backend
+  /app
+    main.py
+    models/     SQLAlchemy models
+    schemas/    Pydantic request/response + LLM output schemas
+    routers/    API routes
+    services/   business logic (LLM calls, matching, CV parsing)
+  /tests
+  /alembic
+/resume     CV as LaTeX (cv.tex, git-ignored) — source of truth for CV content
+/infra      deployment configs
+docker-compose.yml
+```
+
+## Commands
+```bash
+cp .env.example .env               # first-time setup: local env vars
+docker compose up --build          # start api + db locally
+docker compose exec api pytest     # run backend tests
+cd api && uv run pytest            # run backend tests without Docker
+cd api && uv run ruff check . && uv run ruff format --check .  # lint
+docker compose exec api alembic upgrade head   # apply migrations
+cd web && npm run dev              # frontend dev server
+cd web && npm run lint && npm test
+```
+Keep this section up to date when commands change.
+
+## Conventions
+- Python: type hints everywhere, Ruff for lint/format, pytest for tests.
+- TypeScript: strict mode, ESLint + Prettier, no `any`.
+- API: REST, JSON, plural resource names (`/applications`, `/postings`).
+- Every new endpoint gets at least one test (happy path + one failure case).
+- Config via environment variables only. Never hardcode secrets; document new variables in `.env.example`.
+- Git: feature branches → PR to `main`. Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`).
+
+## Core data model (MVP)
+- `Application`: company, role, url, status (`saved | applied | interview | offer | rejected`),
+  applied_at, deadline, notes, cv_version.
+- `Posting`: title, company, location, description, source, url.
+- `FitAnalysis`: posting_id, score (0–100), matched_skills, missing_skills, cv_suggestions, explanation.
+
+## LLM rules (important)
+- All LLM outputs must be parsed into a Pydantic schema; reject and retry on invalid output.
+- **Never invent CV content.** Suggestions may only rephrase, reorder or surface facts that exist
+  in `/resume/cv.tex`, the owner's GitHub repos, or the owner's own notes. Each suggestion must cite its source.
+- Cache LLM responses by input hash; never call the API in tests (mock it).
+- Never log full CV text or API keys.
+
+## MVP scope
+1. Docker Compose with api + db, health endpoint, CI running tests.
+2. Applications CRUD + kanban board.
+3. Deployed to Vercel + Render + hosted Postgres.
+4. Paste a job description → structured fit score + CV suggestions.
+
+## Out of scope for now
+Automated job scraping, GitHub repo ingestion, Gmail integration, multi-user auth, evals in CI.
+Don't build these unless explicitly requested.
+
+## Privacy
+Real applications and the real CV are personal data and never go into the repository.
+Use seed/fake data for tests and any public demo. Never commit `.env` files.
