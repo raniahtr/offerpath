@@ -21,3 +21,11 @@ out/
 .DS_Store
 .vscode/
 .idea/
+
+# Personal context for Claude Code (kept local)
+CLAUDE.local.md
+
+# Real CV is personal data; only fake samples (e.g. cv.example.tex) may be committed
+resume/*
+!resume/.gitkeep
+!resume/*.example.*
