@@ -23,6 +23,9 @@ class Application(Base):
     __table_args__ = (CheckConstraint(f"status IN ({_STATUS_VALUES})", name="status_valid"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Owner: the identity provider's user id (token `sub`). Every query filters on it.
+    # Indexed because every list query starts with "WHERE user_id = ...".
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
     company: Mapped[str] = mapped_column(String(200))
     role: Mapped[str] = mapped_column(String(200))
     url: Mapped[str | None] = mapped_column(String(2000))

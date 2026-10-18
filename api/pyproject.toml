@@ -10,6 +10,7 @@ dependencies = [
     "psycopg[binary]>=3.3.6",     # Postgres driver used by SQLAlchemy
     "alembic>=1.20.0",            # versioned database schema migrations
     "pydantic-settings>=2.16.0",  # typed, validated config from env vars
+    "pyjwt[crypto]>=2.15.1",      # verify signed login tokens (crypto: Ed25519/RSA keys)
 ]
 
 [dependency-groups]
