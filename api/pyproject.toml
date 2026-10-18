@@ -11,6 +11,8 @@ dependencies = [
     "alembic>=1.20.0",            # versioned database schema migrations
     "pydantic-settings>=2.16.0",  # typed, validated config from env vars
     "pyjwt[crypto]>=2.15.1",      # verify signed login tokens (crypto: Ed25519/RSA keys)
+    "openai>=3.24.0",             # LLM client for any OpenAI-compatible API (Groq, Ollama...)
+    "pypdf>=6.19.0",              # extract text from uploaded CV PDFs (no other deps)
 ]
 
 [dependency-groups]

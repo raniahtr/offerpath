@@ -27,10 +27,14 @@ TEST_AUDIENCE = "https://auth.test"
 os.environ["AUTH_JWKS_URL"] = "https://auth.test/.well-known/jwks.json"
 os.environ["AUTH_ISSUER"] = TEST_ISSUER
 os.environ["AUTH_AUDIENCE"] = TEST_AUDIENCE
+# Tests must never reach a real LLM (cost, flakiness, CV data): no key, and get_llm_client
+# is replaced by FakeLlm below. compose's env_file would otherwise pass the real key in.
+os.environ["LLM_API_KEY"] = ""
 
 import app.auth  # noqa: E402
 from app.db import get_db  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
+from app.services.llm import Completion, get_llm_client  # noqa: E402
 
 # The fake provider's signing key (Ed25519 = EdDSA, what Neon Auth uses). Generated per test
 # run, never stored: tests sign tokens with it, the app verifies them with the public half.
@@ -55,6 +59,31 @@ class _FakeJwksClient:
 def fake_identity_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     # Only the key download is faked; signature, expiry, issuer and audience checks are real.
     monkeypatch.setattr(app.auth, "get_jwks_client", _FakeJwksClient)
+
+
+class FakeLlm:
+    """Stands in for the LLM provider. Queue replies (JSON text, or an exception to raise)
+    in `replies`; `calls` records the messages of every request."""
+
+    model = "fake-model"
+
+    def __init__(self) -> None:
+        self.replies: list[str | Exception] = []
+        self.calls: list[list[dict[str, str]]] = []
+
+    def complete(self, messages: list[dict[str, str]], schema: type) -> Completion:
+        self.calls.append([dict(m) for m in messages])
+        if not self.replies:
+            raise AssertionError("FakeLlm was called but no reply was queued")
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return Completion(text=reply, input_tokens=120, output_tokens=40)
+
+
+@pytest.fixture
+def fake_llm() -> FakeLlm:
+    return FakeLlm()
 
 
 TokenFactory = Callable[..., str]
@@ -128,9 +157,10 @@ def db_session(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def anonymous_client(db_session: Session) -> Iterator[TestClient]:
+def anonymous_client(db_session: Session, fake_llm: FakeLlm) -> Iterator[TestClient]:
     """A client that is not signed in."""
     fastapi_app.dependency_overrides[get_db] = lambda: db_session
+    fastapi_app.dependency_overrides[get_llm_client] = lambda: fake_llm
     with TestClient(fastapi_app) as test_client:
         yield test_client
     fastapi_app.dependency_overrides.clear()
