@@ -63,6 +63,10 @@ cd web && npm run dev              # frontend dev server on :3000 (start the com
 cd web && npm run lint && npm test # ESLint + Prettier check, Vitest (API mocked, no backend needed)
 cd web && npm run format           # apply Prettier formatting
 cd web && npm run build            # production build, also type-checks the app
+cd infra/neon && npm ci            # Neon CLI + config packages (pinned)
+cd infra/neon && npx neon checkout dev  # pin the dev branch; pulls its env into infra/neon/.env.local (git-ignored)
+cd infra/neon && npm run plan       # preview what neon.ts would change on the pinned branch
+cd infra/neon && npm run deploy     # apply neon.ts (never pulls credentials)
 ```
 Keep this section up to date when commands change.
 
