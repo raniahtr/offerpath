@@ -26,7 +26,7 @@ jobs:
     # healthcheck before running the steps. Reachable at localhost:5432 from the job.
     services:
       postgres:
-        image: pgvector/pgvector:pg16
+        image: pgvector/pgvector:0.8.7-pg18 # same image as docker-compose.yml
         env:
           POSTGRES_USER: offerpath
           POSTGRES_PASSWORD: offerpath # throwaway CI-only database, not a real secret

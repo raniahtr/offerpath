@@ -1,8 +1,10 @@
 # Local development environment: `docker compose up --build` starts both services.
 services:
   db:
-    # Postgres 16 with the pgvector extension preinstalled (for embedding search later).
-    image: pgvector/pgvector:pg16
+    # Postgres 18 (same major version as the hosted Neon database) with the pgvector
+    # extension preinstalled. Pinned to an exact pgvector release so every machine and CI
+    # run gets the same image.
+    image: pgvector/pgvector:0.8.7-pg18
     # Injects POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB from .env.
     env_file: .env
     ports:
@@ -11,8 +13,11 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       # Named volume: database files live outside the container, so data survives
-      # `docker compose down` and restarts. (`down -v` deletes it.)
-      - pgdata:/var/lib/postgresql/data
+      # `docker compose down` and restarts. (`down -v` deletes it.) Postgres 18 images keep
+      # data in a version-named folder under /var/lib/postgresql (e.g. 18/docker), so the
+      # volume is mounted one level up from the old .../data path; that also lets a future
+      # major upgrade (pg_upgrade) see the old and new folders side by side.
+      - pgdata:/var/lib/postgresql
       # Init scripts run only when the volume is first created (creates the test database).
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:

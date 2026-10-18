@@ -20,7 +20,7 @@ Developer-specific context (background, preferences) lives in `CLAUDE.local.md`,
 |---|---|
 | Frontend | Next.js (App Router) + TypeScript + Tailwind, in `/web` |
 | Backend | FastAPI + Pydantic v2 + SQLAlchemy 2.0, in `/api` (deps managed with uv) |
-| Database | Postgres 16 with pgvector; migrations with Alembic |
+| Database | Postgres 18 with pgvector (local, CI and Neon on the same major); migrations with Alembic |
 | LLM | Claude API, structured outputs validated with Pydantic |
 | Local dev | Docker Compose (api + db) |
 | CI | GitHub Actions: lint + tests on every PR |
