@@ -1,6 +1,8 @@
 // Typed client for the FastAPI backend. Types mirror api/app/schemas/application.py;
 // keep them in sync when the API schema changes.
 
+import { getAccessToken, redirectToSignIn } from "@/lib/auth/session";
+
 export const APPLICATION_STATUSES = [
   "saved",
   "applied",
@@ -90,9 +92,16 @@ function errorMessage(body: unknown, status: number): string {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl()}${path}`, {
+    const url = `${baseUrl()}${path}`;
+    const token = await getAccessToken();
+    response = await fetch(url, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init.headers },
+      headers: {
+        "Content-Type": "application/json",
+        // The API checks this JWT's signature and only returns the signed-in user's rows.
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
     });
   } catch (error) {
     if (error instanceof ApiError) throw error;
@@ -100,6 +109,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError("Could not reach the API. Is it running?", 0);
   }
 
+  if (response.status === 401) {
+    // Signed out or session expired: send the user to sign in instead of showing an error.
+    redirectToSignIn();
+  }
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => undefined);
     throw new ApiError(errorMessage(body, response.status), response.status);

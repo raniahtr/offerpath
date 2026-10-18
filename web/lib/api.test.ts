@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { getAccessToken, redirectToSignIn } from "@/lib/auth/session";
+
 import {
   ApiError,
   type Application,
@@ -30,12 +32,19 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// The real module talks to Neon Auth; here we choose which token (if any) "the session" has.
+vi.mock("@/lib/auth/session", () => ({
+  getAccessToken: vi.fn(),
+  redirectToSignIn: vi.fn(),
+}));
+
 // A fake fetch per test: no real network calls, and we can inspect what was sent.
 const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_API_URL", "http://api.test/");
   vi.stubGlobal("fetch", fetchMock);
+  vi.mocked(getAccessToken).mockResolvedValue("test-jwt");
 });
 
 describe("happy paths", () => {
@@ -87,6 +96,42 @@ describe("happy paths", () => {
 
     await expect(deleteApplication(1)).resolves.toBeUndefined();
     expect(fetchMock.mock.calls[0][1]?.method).toBe("DELETE");
+  });
+});
+
+describe("authentication", () => {
+  test("every request carries the signed-in user's token", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(sample, 201));
+
+    await createApplication({ company: "Acme", role: "ML intern" });
+    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({
+      Authorization: "Bearer test-jwt",
+      "Content-Type": "application/json",
+    });
+  });
+
+  test("without a session no Authorization header is sent", async () => {
+    vi.mocked(getAccessToken).mockResolvedValue(null);
+    fetchMock.mockResolvedValue(jsonResponse([]));
+
+    await listApplications();
+    expect(fetchMock.mock.calls[0][1]?.headers).not.toHaveProperty(
+      "Authorization",
+    );
+  });
+
+  test("a 401 sends the user to sign in and still rejects", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "Token expired" }, 401));
+
+    await expect(listApplications()).rejects.toMatchObject({ status: 401 });
+    expect(redirectToSignIn).toHaveBeenCalledOnce();
+  });
+
+  test("other errors do not redirect", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "Not found" }, 404));
+
+    await expect(listApplications()).rejects.toMatchObject({ status: 404 });
+    expect(redirectToSignIn).not.toHaveBeenCalled();
   });
 });
 
