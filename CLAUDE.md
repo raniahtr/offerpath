@@ -58,7 +58,7 @@ docker compose exec api alembic check          # fail if models and migrations a
 docker compose down -v             # reset the local db volume (re-runs infra/db/init.sql)
 cd web && fnm use                  # Node version from web/.node-version (fnm's shell hook does this on cd)
 cd web && npm ci                   # install exact frontend deps from package-lock.json
-cp web/.env.example web/.env.local # first-time setup: NEXT_PUBLIC_API_URL for the frontend
+cp web/.env.example web/.env.local # first-time setup: API URL + Neon Auth (dev branch) for the frontend
 cd web && npm run dev              # frontend dev server on :3000 (start the compose api first)
 cd web && npm run lint && npm test # ESLint + Prettier check, Vitest (API mocked, no backend needed)
 cd web && npm run format           # apply Prettier formatting
