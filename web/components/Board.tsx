@@ -7,6 +7,7 @@ import {
   type Application,
   type ApplicationCreate,
   type ApplicationStatus,
+  type ApplicationUpdate,
   createApplication,
   deleteApplication,
   listApplications,
@@ -39,6 +40,15 @@ export function Board() {
   async function handleCreate(data: ApplicationCreate) {
     const created = await createApplication(data);
     setApplications((current) => [created, ...(current ?? [])]);
+  }
+
+  // Not optimistic: the edit form stays open (showing "Saving…") until the API confirms,
+  // then the card shows what the API actually stored.
+  async function handleUpdate(id: number, data: ApplicationUpdate) {
+    const updated = await updateApplication(id, data);
+    setApplications((current) =>
+      (current ?? []).map((a) => (a.id === id ? updated : a)),
+    );
   }
 
   // Optimistic update: move the card immediately, then put it back if the API refuses.
@@ -120,6 +130,7 @@ export function Board() {
                     onStatusChange={(s) =>
                       handleStatusChange(application.id, s)
                     }
+                    onUpdate={(data) => handleUpdate(application.id, data)}
                     onDelete={() => handleDelete(application)}
                   />
                 ))}
