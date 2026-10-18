@@ -5,6 +5,7 @@ receives as `Authorization: Bearer <token>`. We check the signature against the 
 public keys (JWKS), plus expiry, issuer and audience. The API never sees passwords.
 """
 
+import logging
 from functools import lru_cache
 from typing import Annotated
 
@@ -17,6 +18,8 @@ from app.config import get_settings
 # auto_error=False: we raise our own 401 (with the WWW-Authenticate header the spec asks for)
 # instead of FastAPI's default 403 when the header is missing.
 _bearer = HTTPBearer(auto_error=False)
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -53,6 +56,7 @@ def current_user_id(
             detail="Sign-in service unavailable, try again shortly",
         ) from error
     except jwt.PyJWTError as error:
+        logger.warning("Rejected token: %s", error)
         raise _unauthorized("Invalid token") from error
 
     try:
@@ -68,6 +72,8 @@ def current_user_id(
         raise _unauthorized("Token expired") from error
     except jwt.PyJWTError as error:
         # Never echo the reason (bad signature, wrong issuer...) in detail: it helps attackers.
+        # Log it instead, for us. PyJWT's messages describe the claim, never the token itself.
+        logger.warning("Rejected token: %s", error)
         raise _unauthorized("Invalid token") from error
 
     user_id = claims["sub"]

@@ -2,6 +2,7 @@
 
 import base64
 import json
+import logging
 from collections.abc import Callable
 
 import jwt
@@ -78,3 +79,18 @@ def test_identity_provider_outage_is_503_not_401(
     monkeypatch.setattr(app.auth, "get_jwks_client", _Unreachable)
 
     assert _get_with(anonymous_client, make_token("user-a")) == 503
+
+
+def test_rejection_reason_is_logged_but_not_returned(
+    anonymous_client: TestClient, make_token: TokenFactory, caplog: pytest.LogCaptureFixture
+) -> None:
+    token = make_token("user-a", iss="https://evil.example")
+
+    with caplog.at_level(logging.WARNING, logger="app.auth"):
+        response = anonymous_client.get(
+            "/applications", headers={"Authorization": f"Bearer {token}"}
+        )
+
+    assert response.json() == {"detail": "Invalid token"}
+    assert "Invalid issuer" in caplog.text
+    assert token not in caplog.text
