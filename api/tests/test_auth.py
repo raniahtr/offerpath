@@ -3,6 +3,7 @@
 import base64
 import json
 import logging
+import time
 from collections.abc import Callable
 
 import jwt
@@ -34,10 +35,20 @@ def test_health_stays_public(anonymous_client: TestClient) -> None:
     assert anonymous_client.get("/health").status_code == 200
 
 
+def test_small_clock_difference_with_the_provider_is_tolerated(
+    anonymous_client: TestClient, make_token: TokenFactory
+) -> None:
+    # The provider's clock runs a little ahead of ours: a fresh token's "issued at" can be a
+    # few seconds in our future. Rejecting it signs the user out right after they sign in.
+    token = make_token(iat=int(time.time()) + 5)
+    assert _get_with(anonymous_client, token) == 200
+
+
 @pytest.mark.parametrize(
     ("description", "build"),
     [
         ("expired", lambda make: make(expires_in=-60)),
+        ("issued far in the future", lambda make: make(iat=int(time.time()) + 300)),
         ("signed by another key", lambda make: make(key=Ed25519PrivateKey.generate())),
         ("unknown key id", lambda make: make(kid="someone-elses-key")),
         ("wrong issuer", lambda make: make(iss="https://evil.test")),
