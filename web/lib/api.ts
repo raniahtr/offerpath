@@ -1,5 +1,5 @@
-// Typed client for the FastAPI backend. Types mirror api/app/schemas/ (application.py, cv.py);
-// keep them in sync when the API schema changes.
+// Typed client for the FastAPI backend. Types mirror api/app/schemas/ (application.py, cv.py,
+// posting.py); keep them in sync when the API schema changes.
 
 import { getAccessToken, redirectToSignIn } from "@/lib/auth/session";
 
@@ -195,4 +195,40 @@ export function extractPdfText(file: Blob): Promise<PdfText> {
     body: file,
     headers: { "Content-Type": "application/pdf" },
   });
+}
+
+// --- Postings (job ads the user pasted) ---
+
+export interface PostingCreate {
+  title: string;
+  company: string;
+  location?: string | null;
+  url?: string | null;
+  description: string;
+}
+
+export interface Posting {
+  id: number;
+  title: string;
+  company: string;
+  location: string | null;
+  url: string | null;
+  description: string;
+  created_at: string; // ISO datetime
+}
+
+export function listPostings(): Promise<Posting[]> {
+  return request("/postings");
+}
+
+export function createPosting(data: PostingCreate): Promise<Posting> {
+  return request("/postings", { method: "POST", body: JSON.stringify(data) });
+}
+
+export function getPosting(id: number): Promise<Posting> {
+  return request(`/postings/${id}`);
+}
+
+export function deletePosting(id: number): Promise<void> {
+  return request(`/postings/${id}`, { method: "DELETE" });
 }

@@ -6,10 +6,14 @@ import {
   ApiError,
   type Application,
   createApplication,
+  createPosting,
   deleteApplication,
+  deletePosting,
   extractPdfText,
   getCv,
+  getPosting,
   listApplications,
+  listPostings,
   saveCv,
   updateApplication,
 } from "./api";
@@ -251,6 +255,51 @@ describe("CV", () => {
     expect(init?.headers).toMatchObject({
       "Content-Type": "application/pdf",
       Authorization: "Bearer test-jwt",
+    });
+  });
+});
+
+describe("postings", () => {
+  const posting = {
+    id: 7,
+    title: "ML Intern",
+    company: "Globex",
+    location: null,
+    url: null,
+    description: "Python",
+    created_at: "2026-10-21T10:00:00Z",
+  };
+
+  test("list, get, create and delete hit the right URLs and methods", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([posting]));
+    await expect(listPostings()).resolves.toEqual([posting]);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/postings");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(posting));
+    await getPosting(7);
+    expect(fetchMock.mock.calls[1][0]).toBe("http://api.test/postings/7");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(posting, 201));
+    await createPosting({
+      title: "ML Intern",
+      company: "Globex",
+      description: "Python",
+    });
+    expect(fetchMock.mock.calls[2][1]?.method).toBe("POST");
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(deletePosting(7)).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[3][1]?.method).toBe("DELETE");
+  });
+
+  test("someone else's posting is a 404 like a missing one", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ detail: "Posting not found" }, 404),
+    );
+
+    await expect(getPosting(99)).rejects.toMatchObject({
+      status: 404,
+      message: "Posting not found",
     });
   });
 });

@@ -10,6 +10,7 @@ import { UserMenu } from "./UserMenu";
 
 const LINKS = [
   { href: "/", label: "Board" },
+  { href: "/postings", label: "Postings" },
   { href: "/cv", label: "CV" },
 ] as const;
 

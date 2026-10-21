@@ -80,8 +80,8 @@ export default function SignInPage() {
           </div>
         )}
         <p className="mt-6 text-xs text-muted">
-          No password to remember: you sign in with an account you already
-          have. Your data is visible only to you.
+          No password to remember: you sign in with an account you already have.
+          Your data is visible only to you.
         </p>
       </div>
     </main>

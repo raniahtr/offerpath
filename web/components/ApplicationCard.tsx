@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { cx } from "@/lib/cx";
 import { type DeadlineTone, deadlineStatus } from "@/lib/format";
+import { safeHref } from "@/lib/url";
 
 import { EditApplicationForm } from "./EditApplicationForm";
 import { STATUS_LABELS } from "./statusLabels";
@@ -29,11 +30,6 @@ const DEADLINE_TONES: Record<DeadlineTone, string> = {
   soon: "bg-amber-soft text-amber",
   later: "bg-mist text-muted",
 };
-
-/** Only link to web addresses: a stored "javascript:..." URL would run code when clicked. */
-function safeHref(url: string | null): string | null {
-  return url && /^https?:\/\//i.test(url) ? url : null;
-}
 
 const iconButton =
   "rounded-md p-1.5 text-muted transition-colors hover:bg-mist hover:text-pine";
