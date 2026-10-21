@@ -204,3 +204,99 @@ describe("deleting a card", () => {
     expect(within(column("Saved")).getByText("Acme")).toBeDefined();
   });
 });
+
+describe("editing an application", () => {
+  function editForm(): HTMLElement {
+    return screen.getByRole("form", { name: "Edit Acme, ML intern" });
+  }
+
+  test("saves the changed details and shows them on the card", async () => {
+    vi.mocked(updateApplication).mockResolvedValue({
+      ...acme,
+      role: "Research intern",
+      notes: "Referral from Sam",
+    });
+    await renderBoard();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Acme, ML intern" }),
+    );
+    const role = within(editForm()).getByLabelText("Role");
+    await userEvent.clear(role);
+    await userEvent.type(role, "Research intern");
+    await userEvent.type(
+      within(editForm()).getByLabelText("Notes"),
+      "Referral from Sam",
+    );
+    await userEvent.click(
+      within(editForm()).getByRole("button", { name: "Save" }),
+    );
+
+    expect(await screen.findByText("Research intern")).toBeDefined();
+    expect(screen.getByText("Referral from Sam")).toBeDefined();
+    expect(screen.queryByRole("form", { name: /^Edit/ })).toBeNull();
+    // Empty optional fields are sent as null so that clearing a field clears it.
+    expect(updateApplication).toHaveBeenCalledWith(1, {
+      company: "Acme",
+      role: "Research intern",
+      url: null,
+      applied_at: null,
+      deadline: null,
+      cv_version: null,
+      notes: "Referral from Sam",
+    });
+  });
+
+  test("an API error keeps the form open with the message", async () => {
+    vi.mocked(updateApplication).mockRejectedValue(
+      new ApiError("url: String should have at most 2000 characters", 422),
+    );
+    await renderBoard();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Acme, ML intern" }),
+    );
+    await userEvent.click(
+      within(editForm()).getByRole("button", { name: "Save" }),
+    );
+
+    expect((await within(editForm()).findByRole("alert")).textContent).toBe(
+      "url: String should have at most 2000 characters",
+    );
+    expect(
+      within(editForm()).getByRole("button", { name: "Save" }),
+    ).toBeDefined();
+  });
+
+  test("cancel closes the form without saving", async () => {
+    await renderBoard();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Acme, ML intern" }),
+    );
+    await userEvent.type(within(editForm()).getByLabelText("Notes"), "draft");
+    await userEvent.click(
+      within(editForm()).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(screen.queryByRole("form", { name: /^Edit/ })).toBeNull();
+    expect(screen.queryByText("draft")).toBeNull();
+    expect(updateApplication).not.toHaveBeenCalled();
+  });
+
+  test("the company links to the posting only for web addresses", async () => {
+    await renderBoard([
+      makeApplication({
+        id: 1,
+        company: "Acme",
+        url: "https://acme.test/jobs/1",
+      }),
+      makeApplication({ id: 2, company: "Evil", url: "javascript:alert(1)" }),
+    ]);
+
+    expect(
+      screen.getByRole("link", { name: "Acme" }).getAttribute("href"),
+    ).toBe("https://acme.test/jobs/1");
+    expect(screen.queryByRole("link", { name: "Evil" })).toBeNull();
+  });
+});
