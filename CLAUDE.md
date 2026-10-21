@@ -2,8 +2,9 @@
 
 Track internship applications, find matching postings, and tailor a CV to each one.
 
-Single-user tool first, public portfolio project second. Code quality, tests and a clear
-deployment pipeline matter as much as features.
+A multi-user web app (each person signs in and sees only their own data), and a public
+portfolio project. Hosted on free tiers only. Code quality, tests and a clear deployment
+pipeline matter as much as features.
 
 Developer-specific context (background, preferences) lives in `CLAUDE.local.md`, which is git-ignored.
 
@@ -24,7 +25,8 @@ Developer-specific context (background, preferences) lives in `CLAUDE.local.md`,
 | LLM | Claude API, structured outputs validated with Pydantic |
 | Local dev | Docker Compose (api + db) |
 | CI | GitHub Actions: lint + tests on every PR |
-| Hosting | Vercel (web), Render (api), Neon or Supabase (db) |
+| Auth | Neon Auth (Google/GitHub sign-in, no passwords); the API verifies JWTs itself via JWKS |
+| Hosting | Vercel Hobby (web + api as a Python function), Neon free (db + auth, Frankfurt) |
 
 ## Repository layout
 ```
@@ -56,11 +58,15 @@ docker compose exec api alembic check          # fail if models and migrations a
 docker compose down -v             # reset the local db volume (re-runs infra/db/init.sql)
 cd web && fnm use                  # Node version from web/.node-version (fnm's shell hook does this on cd)
 cd web && npm ci                   # install exact frontend deps from package-lock.json
-cp web/.env.example web/.env.local # first-time setup: NEXT_PUBLIC_API_URL for the frontend
+cp web/.env.example web/.env.local # first-time setup: API URL + Neon Auth (dev branch) for the frontend
 cd web && npm run dev              # frontend dev server on :3000 (start the compose api first)
 cd web && npm run lint && npm test # ESLint + Prettier check, Vitest (API mocked, no backend needed)
 cd web && npm run format           # apply Prettier formatting
 cd web && npm run build            # production build, also type-checks the app
+cd infra/neon && npm ci            # Neon CLI + config packages (pinned)
+cd infra/neon && npx neon checkout dev  # pin the dev branch; pulls its env into infra/neon/.env.local (git-ignored)
+cd infra/neon && npm run plan       # preview what neon.ts would change on the pinned branch
+cd infra/neon && npm run deploy     # apply neon.ts (never pulls credentials)
 ```
 Keep this section up to date when commands change.
 
@@ -69,11 +75,14 @@ Keep this section up to date when commands change.
 - TypeScript: strict mode, ESLint + Prettier, no `any`.
 - API: REST, JSON, plural resource names (`/applications`, `/postings`).
 - Every new endpoint gets at least one test (happy path + one failure case).
+- **User data is always scoped to the signed-in user**: every query filters on `user_id` from the
+  verified token (never from the request body), someone else's row is a 404, and every new
+  endpoint gets a test proving user B can't read or change user A's data.
 - Config via environment variables only. Never hardcode secrets; document new variables in `.env.example`.
 - Git: feature branches → PR to `main`. Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`).
 
 ## Core data model (MVP)
-- `Application`: company, role, url, status (`saved | applied | interview | offer | rejected`),
+- `Application`: user_id (owner), company, role, url, status (`saved | applied | interview | offer | rejected`),
   applied_at, deadline, notes, cv_version.
 - `Posting`: title, company, location, description, source, url.
 - `FitAnalysis`: posting_id, score (0–100), matched_skills, missing_skills, cv_suggestions, explanation.
@@ -88,13 +97,14 @@ Keep this section up to date when commands change.
 ## MVP scope
 1. Docker Compose with api + db, health endpoint, CI running tests.
 2. Applications CRUD + kanban board.
-3. Deployed to Vercel + Render + hosted Postgres.
+3. Sign-in + per-user data, deployed to Vercel (web + api) + Neon, privacy page and account deletion.
 4. Paste a job description → structured fit score + CV suggestions.
 
 ## Out of scope for now
-Automated job scraping, GitHub repo ingestion, Gmail integration, multi-user auth, evals in CI.
+Automated job scraping, GitHub repo ingestion, Gmail integration, paid plans or billing, evals in CI.
 Don't build these unless explicitly requested.
 
 ## Privacy
-Real applications and the real CV are personal data and never go into the repository.
-Use seed/fake data for tests and any public demo. Never commit `.env` files.
+Users' applications and CVs are personal data (GDPR / Swiss nFADP): they never go into the
+repository, logs or error messages. Use seed/fake data for tests and demos. Never commit `.env` files.
+Store only what a feature needs, and keep the privacy page in sync with which services process data.

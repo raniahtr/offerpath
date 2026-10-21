@@ -85,3 +85,9 @@ jobs:
       - run: npm test # Vitest, single run; the API is mocked, so no backend is needed
       # Production build: also type-checks the whole app, which tests alone don't.
       - run: npm run build
+        env:
+          # The build refuses to start without these (lib/auth/server.ts). Placeholders are
+          # enough: the build never contacts Neon. Real values only live in Vercel/.env.local.
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEON_AUTH_BASE_URL: https://auth.ci.invalid/neondb/auth
+          NEON_AUTH_COOKIE_SECRET: ci-placeholder-secret-at-least-32-chars

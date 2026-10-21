@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "description": "Neon project config (neon.ts) and the CLI that applies it",
+  "scripts": {
+    "plan": "neon config plan",
+    "deploy": "neon deploy --no-env-pull"
+  },
+  "dependencies": {
+    "@neon/config": "1.8.3",
+    "@neon/env": "1.5.0"
+  },
+  "devDependencies": {
+    "neon": "8.0.4"
+  },
+  "allowScripts": {
+    "esbuild": false
+  }
+}

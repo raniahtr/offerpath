@@ -16,7 +16,9 @@ from app.db import Base
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers that already exist (e.g. app.auth when tests run migrations in-process);
+    # by default fileConfig silently disables them.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # The schema as defined by the SQLAlchemy models; used by `alembic revision --autogenerate`
 # and `alembic check` to compare models against the database.
