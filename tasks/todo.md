@@ -27,13 +27,13 @@ Every task:
 **Files:** `api/app/services/tex_edits.py`, `api/app/schemas/tailoring.py` (`EditOp`), `api/tests/test_tex_edits.py`, `api/tests/fake_templates.py`
 **Scope:** M
 
-### T2: Grounding check
+### T2: Grounding check ✅
 **Description:** Check that each source quote exists in the CV text, a saved fact or a motivation answer, and that every number in the new text appears in its sources.
 **Acceptance criteria:**
-- [ ] Quotes match after normalising whitespace, case and LaTeX escapes (reuses `cv_text.latex_to_text`).
-- [ ] An invented metric ("increased accuracy by 30%" when no source has 30) fails, with the failing line id and reason.
-- [ ] The error messages contain line ids and reasons, never CV text, so they're safe to log and to send back to the model.
-**Verification:** `uv run pytest tests/test_grounding.py`
+- [x] Quotes match after normalising whitespace, case and LaTeX escapes (reuses `cv_text.latex_to_text`).
+- [x] An invented metric ("increased accuracy by 30%" when no source has 30) fails, with the failing line id and reason.
+- [x] The error messages contain line ids and reasons, never CV text, so they're safe to log and to send back to the model.
+**Verification:** `uv run pytest tests/test_grounding.py` (10 tests). Also: a replaced line may keep the numbers it already had, quotes shorter than 4 characters don't count, and numbers match as whole numbers (1 doesn't match 10).
 **Dependencies:** none
 **Files:** `api/app/services/grounding.py`, `api/tests/test_grounding.py`
 **Scope:** S
