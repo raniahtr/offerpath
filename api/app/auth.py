@@ -21,6 +21,11 @@ _bearer = HTTPBearer(auto_error=False)
 
 logger = logging.getLogger(__name__)
 
+# The provider's clock and ours never agree exactly. With no tolerance, a token used right
+# after sign-in can look "issued in the future" (iat) and be rejected, which sends the user
+# straight back to the sign-in page. 30 s absorbs normal drift; tokens still expire.
+CLOCK_SKEW_SECONDS = 30
+
 
 @lru_cache
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -66,6 +71,7 @@ def current_user_id(
             algorithms=settings.auth_algorithms,
             issuer=settings.auth_issuer,
             audience=settings.auth_audience,
+            leeway=CLOCK_SKEW_SECONDS,
             options={"require": ["exp", "iat", "sub"]},
         )
     except jwt.ExpiredSignatureError as error:
