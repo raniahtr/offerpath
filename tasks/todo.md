@@ -10,7 +10,7 @@ Every task:
 
 ## Phase 1: Risky core (pure Python, no LLM, no database)
 
-### T1: Line-based `.tex` edit applier ✅ (manual check on the real CV pending)
+### T1: Block-aware `.tex` edit applier ✅ (checked on the owner's real CV)
 **Description:** Split a `.tex` file into its preamble and numbered body lines. Then apply a list of `replace`, `insert_after`, `delete` and `move` operations and rebuild the file. Reject anything that would break the structure.
 **Acceptance criteria:**
 - [x] The preamble is byte-identical, and lines nobody edited are unchanged.
@@ -21,10 +21,16 @@ Every task:
   - an unknown line id
   - two operations on the same line
 - [x] Works on 3 fixture templates (Jake's resume style, moderncv, plain article). These are fake data in `api/tests/fake_templates.py`.
-- [x] Also rejects: lines that would break an environment (deleting or moving `\begin`/`\end`), multi-line text, anchors on deleted lines, and move cycles.
-**Verification:** `uv run pytest tests/test_tex_edits.py` (27 tests). Manual, still pending: run it on the owner's real `resume/cv.tex`, locally and never committed.
+- [x] Also rejects: lines that would break an environment, multi-line replacements, anchors on deleted lines, and move cycles.
+- [x] Blocks (added after checkpoint 1):
+  - `move` and `delete` take a line range (`to`), so whole entries and sections can move or go.
+  - `insert_after` accepts a multi-line balanced block, so a new entry can be added.
+  - A bullet only moves within its own list, so work is never credited to another entry.
+  - A section heading only moves or goes away with its whole section.
+  - Bare `\item` lines can only be inserted into a list.
+**Verification:** `uv run pytest tests/test_tex_edits.py` (40 tests). Manual: 14 realistic scenarios on the owner's real `resume/cv.tex` (local, never committed). All behave as intended. Compiling the output in Overleaf is still pending.
 **Dependencies:** none
-**Files:** `api/app/services/tex_edits.py`, `api/app/schemas/tailoring.py` (`EditOp`), `api/tests/test_tex_edits.py`, `api/tests/fake_templates.py`
+**Files:** `api/app/services/tex_edits.py`, `api/app/schemas/tailoring.py` (`EditOp`), `api/tests/test_tex_edits.py`, `api/tests/fake_templates.py` (+ ENTRIES template)
 **Scope:** M
 
 ### T2: Grounding check ✅
@@ -40,7 +46,9 @@ Every task:
 
 ### Checkpoint 1
 - [ ] Tests and lint pass.
-- [ ] T1 handles the owner's real template. If not, switch to grouping lines by brace depth before going further.
+- [x] T1 handles the owner's real template. It needed block-aware edits, now added.
+- [ ] The owner compiles one tailored output in Overleaf.
+- [ ] Known limit: a number only has to appear in one of the quotes, not in the quote it belongs to. The T11 UI shows the sources for each change so you can spot a borrowed date.
 - [ ] Human review.
 
 ## Phase 2: UI for the existing backend (prerequisite screens)

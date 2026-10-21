@@ -2,24 +2,32 @@ import pytest
 
 from app.schemas.tailoring import EditOp
 from app.services.tex_edits import TexEditError, apply_edits, parse_tex
-from tests.fake_templates import JAKE_STYLE, MODERNCV, PLAIN_ARTICLE
+from tests.fake_templates import ENTRIES, JAKE_STYLE, MODERNCV, PLAIN_ARTICLE
 
 
-def _line_id(source: str, fragment: str) -> str:
-    """Id of the first body line containing `fragment` (ids are stable: L1 = first body line)."""
-    return next(line_id for line_id, text in parse_tex(source).lines() if fragment in text)
+def _line_id(source: str, fragment: str, offset: int = 0) -> str:
+    """Id of the first body line containing `fragment` (ids are stable: L1 = first body line),
+    or of the line `offset` lines below it."""
+    line_id = next(line_id for line_id, text in parse_tex(source).lines() if fragment in text)
+    return f"L{int(line_id[1:]) + offset}"
 
 
-def op(kind: str, line: str, text: str | None = None, after: str | None = None) -> EditOp:
-    return EditOp(op=kind, line=line, text=text, after=after, sources=["x"], reason="test")
+def op(
+    kind: str,
+    line: str,
+    text: str | None = None,
+    after: str | None = None,
+    to: str | None = None,
+) -> EditOp:
+    return EditOp(op=kind, line=line, to=to, text=text, after=after, sources=["x"], reason="t")
 
 
-@pytest.mark.parametrize("source", [JAKE_STYLE, MODERNCV, PLAIN_ARTICLE])
+@pytest.mark.parametrize("source", [JAKE_STYLE, MODERNCV, PLAIN_ARTICLE, ENTRIES])
 def test_no_edits_gives_back_the_exact_file(source: str) -> None:
     assert apply_edits(source, []) == source
 
 
-@pytest.mark.parametrize("source", [JAKE_STYLE, MODERNCV, PLAIN_ARTICLE])
+@pytest.mark.parametrize("source", [JAKE_STYLE, MODERNCV, PLAIN_ARTICLE, ENTRIES])
 def test_preamble_and_untouched_lines_are_byte_identical(source: str) -> None:
     doc = parse_tex(source)
     first_id, first_text = next((i, t) for i, t in doc.lines() if t.strip())
@@ -149,14 +157,14 @@ def test_rejects_breaking_environments() -> None:
     assert all("environment" in p for p in problems)
 
 
-def test_rejects_multiline_text_and_bad_anchors() -> None:
+def test_rejects_multiline_replace_and_bad_anchors() -> None:
     bullet = _line_id(PLAIN_ARTICLE, "unit tests")
     pipeline = _line_id(PLAIN_ARTICLE, "data pipeline")
 
     problems = _rejected(
         PLAIN_ARTICLE,
         [
-            op("insert_after", bullet, text="  \\item a\n  \\item b"),
+            op("replace", bullet, text="  \\item a\n  \\item b"),
             op("delete", pipeline),
             op("insert_after", pipeline, text=r"  \item c"),  # anchored on a deleted line
             op("move", bullet, after=bullet),
@@ -166,6 +174,128 @@ def test_rejects_multiline_text_and_bad_anchors() -> None:
     assert any("one line" in p for p in problems)
     assert any("deleted" in p for p in problems)
     assert any("itself" in p for p in problems)
+
+
+# --- Blocks: whole entries and sections ---
+
+
+def test_move_a_whole_entry_to_the_top_of_its_section() -> None:
+    first = _line_id(ENTRIES, r"\entry{Campus app}")
+    last = _line_id(ENTRIES, "React Native app", offset=1)  # its \end{itemize}
+
+    result = apply_edits(
+        ENTRIES, [op("move", first, to=last, after=_line_id(ENTRIES, r"\section{Projects}"))]
+    )
+    projects = result[result.index(r"\section{Projects}") :]
+
+    assert projects.index("Campus app") < projects.index("Spike sorter")
+    assert projects.count(r"\begin{itemize}") == projects.count(r"\end{itemize}") == 2
+
+
+def test_move_a_whole_section_with_its_content() -> None:
+    first = _line_id(ENTRIES, r"\section{Projects}")
+    last = _line_id(ENTRIES, "React Native app", offset=1)
+
+    result = apply_edits(ENTRIES, [op("move", first, to=last, after="L0")])
+
+    assert result.index("Spike sorter") < result.index(r"\section{Experience}")
+    assert result.index("Campus app") < result.index(r"\section{Experience}")
+
+
+def test_rephrasing_a_line_inside_a_moved_block_is_fine() -> None:
+    first = _line_id(ENTRIES, r"\entry{Campus app}")
+    bullet = _line_id(ENTRIES, "React Native app")
+    edits = [
+        op("move", first, to=f"L{int(bullet[1:]) + 1}", after=_line_id(ENTRIES, "Projects}")),
+        op("replace", bullet, text=r"  \item Built a \textbf{React Native} app"),
+    ]
+
+    result = apply_edits(ENTRIES, edits)
+
+    assert result.index(r"\textbf{React Native}") < result.index("Spike sorter")
+
+
+def test_delete_a_whole_entry() -> None:
+    first = _line_id(ENTRIES, r"\entry{Spike sorter}")
+    result = apply_edits(ENTRIES, [op("delete", first, to=_line_id(ENTRIES, "scikit", offset=1))])
+
+    assert "Spike sorter" not in result and "scikit" not in result
+    assert result.count(r"\begin{itemize}") == result.count(r"\end{itemize}") == 2
+
+
+def test_insert_a_new_entry_as_one_balanced_block() -> None:
+    block = "\n".join(
+        [
+            r"\entry{Offerpath}{2026}",
+            r"\begin{itemize}",
+            r"  \item Built a FastAPI and Next.js app",
+            r"\end{itemize}",
+        ]
+    )
+    result = apply_edits(ENTRIES, [op("insert_after", _line_id(ENTRIES, "Projects}"), text=block)])
+
+    assert result.index("Offerpath") < result.index("Spike sorter")
+
+
+def test_a_bullet_cant_leave_its_list() -> None:
+    bullet = _line_id(ENTRIES, "Shipped a FastAPI")
+    header = _line_id(ENTRIES, r"\entry{ML Intern")
+    other_list = _line_id(ENTRIES, "scikit")
+
+    problems = _rejected(ENTRIES, [op("move", bullet, after=header)])
+    assert any("same list" in p for p in problems)
+    # Into another entry's list would credit the work to the wrong entry: also rejected.
+    problems = _rejected(ENTRIES, [op("move", bullet, after=other_list)])
+    assert any("same list" in p for p in problems)
+
+
+def test_a_section_heading_cant_move_or_go_without_its_content() -> None:
+    heading = _line_id(ENTRIES, r"\section{Projects}")
+    half = _line_id(ENTRIES, "scikit", offset=1)  # ends after the first project only
+
+    problems = _rejected(
+        ENTRIES,
+        [op("move", heading, after="L0")],
+    )
+    assert any("whole section" in p for p in problems)
+    assert any("whole section" in p for p in _rejected(ENTRIES, [op("delete", heading)]))
+    problems = _rejected(ENTRIES, [op("move", heading, to=half, after="L0")])
+    assert any("whole section" in p for p in problems)
+
+
+def test_bare_items_can_only_be_inserted_into_a_list() -> None:
+    header = _line_id(ENTRIES, r"\entry{ML Intern")
+
+    problems = _rejected(ENTRIES, [op("insert_after", header, text=r"\item Stray bullet")])
+
+    assert any("inside a list" in p for p in problems)
+
+
+def test_ranges_must_be_balanced_and_well_formed() -> None:
+    header = _line_id(ENTRIES, r"\entry{Spike sorter}")
+    begin = _line_id(ENTRIES, "scikit", offset=-1)
+
+    problems = _rejected(ENTRIES, [op("move", header, to=begin, after="L0")])  # cuts the list
+    assert any("environment" in p for p in problems)
+    problems = _rejected(ENTRIES, [op("delete", begin, to=header)])
+    assert any("ends before" in p for p in problems)
+
+
+def test_overlapping_blocks_are_rejected() -> None:
+    first = _line_id(ENTRIES, r"\entry{Spike sorter}")
+    last = _line_id(ENTRIES, "scikit", offset=1)
+    bullet = _line_id(ENTRIES, "scikit")
+
+    problems = _rejected(ENTRIES, [op("delete", first, to=last), op("move", bullet, after=first)])
+
+    assert any("more than once" in p for p in problems)
+
+
+def test_inserted_blocks_cant_bring_new_environments() -> None:
+    block = "\\begin{verbatim}\nx\n\\end{verbatim}"
+    problems = _rejected(ENTRIES, [op("insert_after", "L0", text=block)])
+
+    assert any("environment" in p and "verbatim" in p for p in problems)
 
 
 def test_rejects_move_cycles() -> None:
@@ -191,6 +321,8 @@ def test_op_fields_must_match_the_kind() -> None:
         op("move", "L1")  # move needs `after`
     with pytest.raises(ValueError):
         op("delete", "L1", text="x")
+    with pytest.raises(ValueError):
+        op("replace", "L1", text="x", to="L3")  # ranges are for move/delete only
 
 
 def test_not_a_full_document_is_rejected() -> None:

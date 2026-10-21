@@ -9,7 +9,7 @@ ORIGINAL = {"L7": r"  \item Trained \textbf{PyTorch} models on 10\% of R\&D data
 
 
 def edit(text: str | None, sources: list[str], kind: str = "replace", line: str = "L7") -> EditOp:
-    return EditOp(op=kind, line=line, text=text, after=None, sources=sources, reason="r")
+    return EditOp(op=kind, line=line, to=None, text=text, after=None, sources=sources, reason="r")
 
 
 def check(*edits: EditOp) -> list[str]:
@@ -68,11 +68,18 @@ def test_number_match_is_whole_number_not_digit_substring() -> None:
     assert problems == ["after L7: number 1 is not in its sources"]
 
 
+def test_layout_numbers_are_not_claims() -> None:
+    block = "\n".join(
+        [r"\begin{itemize}[leftmargin=0.15in, nosep]", r"  \item Trained models", r"\vspace{-2pt}"]
+    )
+    assert check(edit(block, ["Trained PyTorch models"], kind="insert_after")) == []
+
+
 def test_delete_and_move_need_no_sources() -> None:
     assert (
         check(
             edit(None, [], kind="delete"),
-            EditOp(op="move", line="L7", text=None, after="L0", sources=[], reason="r"),
+            EditOp(op="move", line="L7", to=None, text=None, after="L0", sources=[], reason="r"),
         )
         == []
     )

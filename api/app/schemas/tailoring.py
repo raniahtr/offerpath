@@ -15,7 +15,14 @@ class EditOp(BaseModel):
 
     op: Literal["replace", "insert_after", "delete", "move"]
     line: str = Field(description="Line to replace/delete/move, or the anchor to insert after.")
-    text: str | None = Field(description="New LaTeX line for replace/insert_after, else null.")
+    to: str | None = Field(
+        description="For delete/move of a block (whole entry or section): its last line "
+        "(inclusive). Null for a single line."
+    )
+    text: str | None = Field(
+        description="replace: the new line (one line). insert_after: new lines, joined with "
+        "\\n; a new entry must include its whole list. Null otherwise."
+    )
     after: str | None = Field(description="For move: the line id to move after, else null.")
     sources: list[str] = Field(
         max_length=5, description="Exact quotes from the CV or the user's facts backing this."
@@ -30,4 +37,6 @@ class EditOp(BaseModel):
         needs_after = self.op == "move"
         if needs_after != (self.after is not None):
             raise ValueError(f"'after' is {'required' if needs_after else 'not allowed'} here")
+        if self.to is not None and self.op not in ("delete", "move"):
+            raise ValueError("'to' (a block's last line) is only allowed for delete and move")
         return self

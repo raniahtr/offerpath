@@ -15,6 +15,8 @@ MIN_QUOTE_CHARS = 4
 
 _ESCAPES = {r"\&": "&", r"\%": "%", r"\$": "$", r"\#": "#", r"\_": "_", r"\{": "", r"\}": ""}
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+# Formatting, not claims: optional arguments ([leftmargin=0.15in]) and lengths (\vspace{2pt}).
+_LAYOUT = re.compile(r"\[[^\]]*\]|-?\d+(?:\.\d+)?\s*(?:pt|in|cm|mm|em|ex|bp)\b")
 
 
 def normalize(text: str) -> str:
@@ -53,7 +55,8 @@ def check_grounding(
                 problems.append(f"{where}: source {position} is not in your CV or facts")
 
         backing = quotes + ([normalize(originals[edit.line])] if edit.op == "replace" else [])
-        for number in dict.fromkeys(_NUMBER.findall(normalize(edit.text))):
+        claims = normalize(_LAYOUT.sub(" ", edit.text))
+        for number in dict.fromkeys(_NUMBER.findall(claims)):
             if not any(_contains_number(number, text) for text in backing):
                 problems.append(f"{where}: number {number} is not in its sources")
     return problems
