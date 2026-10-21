@@ -11,10 +11,12 @@ import {
   deletePosting,
   extractPdfText,
   getCv,
+  getLatestFit,
   getPosting,
   listApplications,
   listPostings,
   saveCv,
+  saveManualFit,
   updateApplication,
 } from "./api";
 
@@ -300,6 +302,28 @@ describe("postings", () => {
     await expect(getPosting(99)).rejects.toMatchObject({
       status: 404,
       message: "Posting not found",
+    });
+  });
+});
+
+describe("fit", () => {
+  test("getLatestFit returns null when the posting was never analysed (404)", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ detail: "No analysis yet" }, 404),
+    );
+
+    await expect(getLatestFit(7)).resolves.toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/postings/7/fit");
+  });
+
+  test("saveManualFit POSTs the pasted answer as JSON", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
+
+    await saveManualFit(7, '{"score": 72}');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/postings/7/fit/manual");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      answer: '{"score": 72}',
     });
   });
 });

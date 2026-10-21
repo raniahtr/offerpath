@@ -66,8 +66,18 @@ describe("listing", () => {
     expect(
       within(first).getByRole("link", { name: /Open the ad/ }),
     ).toHaveProperty("href", "https://jobs.example.com/1");
-    // A "javascript:" URL never becomes a link.
-    expect(within(row(/^Data Intern, Initech/)).queryByRole("link")).toBeNull();
+    // A "javascript:" URL never becomes a link to the ad.
+    expect(
+      within(row(/^Data Intern, Initech/)).queryByRole("link", {
+        name: /Open the ad/,
+      }),
+    ).toBeNull();
+    // Each title opens the posting's own page.
+    expect(
+      within(first)
+        .getByRole("link", { name: "ML Engineering Intern" })
+        .getAttribute("href"),
+    ).toBe("/postings/1");
     // With postings, the form stays closed until asked for.
     expect(screen.queryByRole("form", { name: "New posting" })).toBeNull();
   });

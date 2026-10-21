@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { Posting } from "@/lib/api";
 import { safeHref } from "@/lib/url";
 
@@ -31,7 +33,12 @@ export function PostingList({ postings, onDelete }: PostingListProps) {
             className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-mist/50"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{posting.title}</p>
+              <Link
+                href={`/postings/${posting.id}`}
+                className="block truncate text-sm font-semibold hover:text-sage hover:underline"
+              >
+                {posting.title}
+              </Link>
               <p className="truncate text-sm text-muted">
                 {posting.company}
                 {posting.location && <> · {posting.location}</>}

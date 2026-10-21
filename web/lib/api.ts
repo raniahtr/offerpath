@@ -1,5 +1,5 @@
 // Typed client for the FastAPI backend. Types mirror api/app/schemas/ (application.py, cv.py,
-// posting.py); keep them in sync when the API schema changes.
+// posting.py, fit.py); keep them in sync when the API schema changes.
 
 import { getAccessToken, redirectToSignIn } from "@/lib/auth/session";
 
@@ -231,4 +231,55 @@ export function getPosting(id: number): Promise<Posting> {
 
 export function deletePosting(id: number): Promise<void> {
   return request(`/postings/${id}`, { method: "DELETE" });
+}
+
+// --- Fit analysis (CV vs posting) ---
+
+export interface FitAnalysis {
+  id: number;
+  posting_id: number;
+  score: number; // 0-100
+  matched_skills: string[];
+  missing_skills: string[];
+  explanation: string;
+  source: "api" | "manual"; // the app's AI, or the user's own chat
+  model: string | null;
+  created_at: string; // ISO datetime
+}
+
+/** The latest analysis of a posting, or null if there is none yet. */
+export async function getLatestFit(
+  postingId: number,
+): Promise<FitAnalysis | null> {
+  try {
+    return await request<FitAnalysis>(`/postings/${postingId}/fit`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Runs the app's AI. Identical inputs return the stored analysis without a new AI call.
+ * Fails with 409 (no CV yet), 429 (daily limit), 503 (AI off or busy), 502 (bad answer). */
+export function analyzeFit(postingId: number): Promise<FitAnalysis> {
+  return request(`/postings/${postingId}/fit`, { method: "POST" });
+}
+
+/** The full prompt, for the user to run in their own chat (free, no daily limit). */
+export async function getFitPrompt(postingId: number): Promise<string> {
+  const { prompt } = await request<{ prompt: string }>(
+    `/postings/${postingId}/fit/prompt`,
+  );
+  return prompt;
+}
+
+/** Validates and saves the answer pasted back from the user's own chat (422 if invalid). */
+export function saveManualFit(
+  postingId: number,
+  answer: string,
+): Promise<FitAnalysis> {
+  return request(`/postings/${postingId}/fit/manual`, {
+    method: "POST",
+    body: JSON.stringify({ answer }),
+  });
 }
