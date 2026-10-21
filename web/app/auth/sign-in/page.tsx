@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/Button";
+import { LogoMark } from "@/components/ui/Icons";
+import { ErrorBanner } from "@/components/ui/States";
 import { authClient } from "@/lib/auth/client";
 
 const PROVIDERS = [
@@ -10,6 +13,12 @@ const PROVIDERS = [
 ] as const;
 
 type ProviderId = (typeof PROVIDERS)[number]["id"];
+
+const FEATURES = [
+  "Track every application on one board",
+  "See how well your CV fits a posting",
+  "Tailor your CV without inventing anything",
+];
 
 export default function SignInPage() {
   const [pending, setPending] = useState<ProviderId | null>(null);
@@ -31,29 +40,50 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
-      <h1 className="mb-1 text-2xl font-semibold">Offerpath</h1>
-      <p className="mb-6 text-sm text-muted">
-        Sign in to track your internship applications.
-      </p>
-      <div className="grid gap-3">
-        {PROVIDERS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => signIn(id)}
-            disabled={pending !== null}
-            className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium hover:bg-sage-soft disabled:opacity-60"
-          >
-            {pending === id ? "Redirecting…" : `Continue with ${label}`}
-          </button>
-        ))}
-      </div>
-      {error && (
-        <p role="alert" className="mt-4 text-sm text-amber">
-          {error}
+    <main className="flex flex-1 items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 shadow-sm">
+        <LogoMark width={36} height={36} />
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+          Offerpath
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          Sign in to track your internship applications.
         </p>
-      )}
+
+        <ul className="mt-5 grid gap-1.5 text-sm">
+          {FEATURES.map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-sage"
+              />
+              {feature}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 grid gap-2">
+          {PROVIDERS.map(({ id, label }) => (
+            <Button
+              key={id}
+              onClick={() => signIn(id)}
+              disabled={pending !== null}
+              className="h-10 w-full"
+            >
+              {pending === id ? "Redirecting…" : `Continue with ${label}`}
+            </Button>
+          ))}
+        </div>
+        {error && (
+          <div className="mt-4">
+            <ErrorBanner>{error}</ErrorBanner>
+          </div>
+        )}
+        <p className="mt-6 text-xs text-muted">
+          No password to remember: you sign in with an account you already
+          have. Your data is visible only to you.
+        </p>
+      </div>
     </main>
   );
 }

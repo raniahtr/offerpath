@@ -14,12 +14,35 @@ import {
   updateApplication,
 } from "@/lib/api";
 
+import { cx } from "@/lib/cx";
+
 import { ApplicationCard } from "./ApplicationCard";
 import { NewApplicationForm } from "./NewApplicationForm";
-import { STATUS_LABELS } from "./statusLabels";
+import { STATUS_DOTS, STATUS_LABELS } from "./statusLabels";
+import { ErrorBanner, Loading, Skeleton } from "./ui/States";
+
+const columnsClass =
+  "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0";
+const columnClass =
+  "flex w-[85%] shrink-0 snap-start flex-col gap-2 rounded-xl bg-sage-soft/40 p-2 md:w-auto";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function BoardSkeleton() {
+  return (
+    <Loading label="Loading applications…" className={columnsClass}>
+      {APPLICATION_STATUSES.map((status, index) => (
+        <div key={status} className={columnClass}>
+          <Skeleton className="h-5 w-24" />
+          {Array.from({ length: index % 2 === 0 ? 2 : 1 }, (_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
+      ))}
+    </Loading>
+  );
 }
 
 export function Board() {
@@ -88,23 +111,16 @@ export function Board() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <NewApplicationForm onCreate={handleCreate} />
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-md bg-amber-soft px-3 py-2 text-sm text-amber"
-        >
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {applications === null ? (
-        !error && <p className="text-sm text-muted">Loading applications…</p>
+        !error && <BoardSkeleton />
       ) : (
         // Phones: one column per screen, swipe sideways (snap). md and up: all five side by side.
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
+        <div className={columnsClass}>
           {APPLICATION_STATUSES.map((status) => {
             const cards = applications.filter((a) => a.status === status);
             const headingId = `column-${status}`;
@@ -112,17 +128,26 @@ export function Board() {
               <section
                 key={status}
                 aria-labelledby={headingId}
-                className="flex w-[85%] shrink-0 snap-start flex-col gap-2 rounded-xl bg-sage-soft/50 p-2 md:w-auto"
+                className={columnClass}
               >
                 <h2
                   id={headingId}
-                  className="flex items-center justify-between px-1 text-sm font-semibold"
+                  className="flex items-center gap-2 px-1 py-0.5 text-xs font-semibold tracking-wide text-muted uppercase"
                 >
+                  <span
+                    aria-hidden="true"
+                    className={cx("size-2 rounded-full", STATUS_DOTS[status])}
+                  />
                   {STATUS_LABELS[status]}
-                  <span className="text-xs font-normal text-muted">
+                  <span className="ml-auto rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted tabular-nums">
                     {cards.length}
                   </span>
                 </h2>
+                {cards.length === 0 && (
+                  <p className="hidden rounded-lg border border-dashed border-line px-3 py-6 text-center text-xs text-muted md:block">
+                    Nothing here yet
+                  </p>
+                )}
                 {cards.map((application) => (
                   <ApplicationCard
                     key={application.id}
