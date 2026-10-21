@@ -7,7 +7,10 @@ import {
   type Application,
   createApplication,
   deleteApplication,
+  extractPdfText,
+  getCv,
   listApplications,
+  saveCv,
   updateApplication,
 } from "./api";
 
@@ -197,5 +200,57 @@ describe("failures", () => {
 
     await expect(listApplications()).rejects.toThrow(/NEXT_PUBLIC_API_URL/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("CV", () => {
+  const cv = {
+    content: "Ada Example",
+    format: "text",
+    updated_at: "2026-10-21T15:30:00Z",
+  };
+
+  test("getCv returns the CV, or null when there isn't one yet (404)", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(cv));
+    await expect(getCv()).resolves.toEqual(cv);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "No CV yet" }, 404));
+    await expect(getCv()).resolves.toBeNull();
+  });
+
+  test("getCv still rejects on other errors", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "Boom" }, 500));
+
+    await expect(getCv()).rejects.toMatchObject({ status: 500 });
+  });
+
+  test("saveCv PUTs the content and format", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(cv));
+
+    await saveCv("Ada Example", "text");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/cv");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      content: "Ada Example",
+      format: "text",
+    });
+  });
+
+  test("extractPdfText sends the raw PDF, not JSON, with the token", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ text: "Ada", pages: 1 }));
+    const file = new Blob(["%PDF-1.4"], { type: "application/pdf" });
+
+    await expect(extractPdfText(file)).resolves.toEqual({
+      text: "Ada",
+      pages: 1,
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/cv/pdf");
+    expect(init?.body).toBe(file);
+    expect(init?.headers).toMatchObject({
+      "Content-Type": "application/pdf",
+      Authorization: "Bearer test-jwt",
+    });
   });
 });

@@ -1,4 +1,4 @@
-// Typed client for the FastAPI backend. Types mirror api/app/schemas/application.py;
+// Typed client for the FastAPI backend. Types mirror api/app/schemas/ (application.py, cv.py);
 // keep them in sync when the API schema changes.
 
 import { getAccessToken, redirectToSignIn } from "@/lib/auth/session";
@@ -150,4 +150,49 @@ export function updateApplication(
 
 export function deleteApplication(id: number): Promise<void> {
   return request(`/applications/${id}`, { method: "DELETE" });
+}
+
+// --- CV (one per user) ---
+
+export type CvFormat = "latex" | "text" | "pdf";
+
+export interface Cv {
+  content: string;
+  format: CvFormat;
+  updated_at: string; // ISO datetime
+}
+
+export interface PdfText {
+  text: string;
+  pages: number;
+}
+
+/** The signed-in user's CV, or null if they haven't saved one yet. */
+export async function getCv(): Promise<Cv | null> {
+  try {
+    return await request<Cv>("/cv");
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export function saveCv(content: string, format: CvFormat): Promise<Cv> {
+  return request("/cv", {
+    method: "PUT",
+    body: JSON.stringify({ content, format }),
+  });
+}
+
+export function deleteCv(): Promise<void> {
+  return request("/cv", { method: "DELETE" });
+}
+
+/** Sends the raw PDF; the API returns its text for review and stores nothing. */
+export function extractPdfText(file: Blob): Promise<PdfText> {
+  return request("/cv/pdf", {
+    method: "POST",
+    body: file,
+    headers: { "Content-Type": "application/pdf" },
+  });
 }

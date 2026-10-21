@@ -13,6 +13,8 @@ vi.mock("@/lib/auth/client", () => ({
   },
 }));
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   listApplications: vi.fn(),
