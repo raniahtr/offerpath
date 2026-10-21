@@ -47,7 +47,7 @@ Every task:
 ### Checkpoint 1
 - [ ] Tests and lint pass.
 - [x] T1 handles the owner's real template. It needed block-aware edits, now added.
-- [ ] The owner compiles one tailored output in Overleaf.
+- [x] The owner compiled one tailored output (5 edits combined) in Overleaf.
 - [ ] Known limit: a number only has to appear in one of the quotes, not in the quote it belongs to. The T11 UI shows the sources for each change so you can spot a borrowed date.
 - [ ] Human review.
 
