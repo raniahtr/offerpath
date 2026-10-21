@@ -10,20 +10,21 @@ Every task:
 
 ## Phase 1: Risky core (pure Python, no LLM, no database)
 
-### T1: Line-based `.tex` edit applier
+### T1: Line-based `.tex` edit applier ✅ (manual check on the real CV pending)
 **Description:** Split a `.tex` file into its preamble and numbered body lines. Then apply a list of `replace`, `insert_after`, `delete` and `move` operations and rebuild the file. Reject anything that would break the structure.
 **Acceptance criteria:**
-- [ ] The preamble is byte-identical, and lines nobody edited are unchanged.
-- [ ] Rejected with a clear reason, never silently applied:
+- [x] The preamble is byte-identical, and lines nobody edited are unchanged.
+- [x] Rejected with a clear reason, never silently applied:
   - unbalanced braces
   - a command not already used in the body
   - `\input`, `\include` or `\write18`
   - an unknown line id
   - two operations on the same line
-- [ ] Works on 3 fixture templates (Jake's resume style, moderncv, a plain article-class CV). These are fake data in `api/tests/fixtures/`.
-**Verification:** `uv run pytest tests/test_tex_edits.py`. Manual: run it on the owner's real `resume/cv.tex` with a hand-written operation list. This stays local and is never committed.
+- [x] Works on 3 fixture templates (Jake's resume style, moderncv, plain article). These are fake data in `api/tests/fake_templates.py`.
+- [x] Also rejects: lines that would break an environment (deleting or moving `\begin`/`\end`), multi-line text, anchors on deleted lines, and move cycles.
+**Verification:** `uv run pytest tests/test_tex_edits.py` (27 tests). Manual, still pending: run it on the owner's real `resume/cv.tex`, locally and never committed.
 **Dependencies:** none
-**Files:** `api/app/services/tex_edits.py`, `api/tests/test_tex_edits.py`, `api/tests/fixtures/*.tex`
+**Files:** `api/app/services/tex_edits.py`, `api/app/schemas/tailoring.py` (`EditOp`), `api/tests/test_tex_edits.py`, `api/tests/fake_templates.py`
 **Scope:** M
 
 ### T2: Grounding check
