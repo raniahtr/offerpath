@@ -5,9 +5,12 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { redirectToSignIn } from "@/lib/auth/session";
 
+import { Button } from "./ui/Button";
+
 export function UserMenu() {
   const { data } = authClient.useSession();
   const [signingOut, setSigningOut] = useState(false);
+  const email = data?.user?.email;
 
   async function signOut() {
     setSigningOut(true);
@@ -17,17 +20,22 @@ export function UserMenu() {
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      {data?.user && (
-        <span className="hidden text-muted sm:inline">{data.user.email}</span>
+      {email && (
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="flex size-7 items-center justify-center rounded-full bg-sage-soft text-xs font-semibold text-sage-dark uppercase"
+          >
+            {email[0]}
+          </span>
+          <span className="hidden max-w-48 truncate text-muted sm:inline">
+            {email}
+          </span>
+        </span>
       )}
-      <button
-        type="button"
-        onClick={signOut}
-        disabled={signingOut}
-        className="rounded-md border border-line px-3 py-1.5 hover:bg-sage-soft disabled:opacity-60"
-      >
+      <Button variant="ghost" size="sm" onClick={signOut} disabled={signingOut}>
         Sign out
-      </button>
+      </Button>
     </div>
   );
 }

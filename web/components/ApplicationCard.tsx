@@ -8,10 +8,14 @@ import {
   type ApplicationStatus,
   type ApplicationUpdate,
 } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { cx } from "@/lib/cx";
+import { type DeadlineTone, deadlineStatus } from "@/lib/format";
+import { safeHref } from "@/lib/url";
 
 import { EditApplicationForm } from "./EditApplicationForm";
 import { STATUS_LABELS } from "./statusLabels";
+import { controlClass } from "./ui/Field";
+import { CalendarIcon, PencilIcon, TrashIcon } from "./ui/Icons";
 
 interface ApplicationCardProps {
   application: Application;
@@ -21,10 +25,14 @@ interface ApplicationCardProps {
   onDelete: () => void;
 }
 
-/** Only link to web addresses: a stored "javascript:..." URL would run code when clicked. */
-function safeHref(url: string | null): string | null {
-  return url && /^https?:\/\//i.test(url) ? url : null;
-}
+const DEADLINE_TONES: Record<DeadlineTone, string> = {
+  overdue: "bg-rose-soft text-rose",
+  soon: "bg-amber-soft text-amber",
+  later: "bg-mist text-muted",
+};
+
+const iconButton =
+  "rounded-md p-1.5 text-muted transition-colors hover:bg-mist hover:text-pine";
 
 export function ApplicationCard({
   application,
@@ -55,14 +63,16 @@ export function ApplicationCard({
     );
   }
 
+  const due = deadline ? deadlineStatus(deadline) : null;
+
   return (
     <article
       aria-label={label}
-      className="rounded-lg border border-line bg-surface p-3 shadow-sm"
+      className="group rounded-lg border border-line bg-surface p-3 shadow-xs transition-colors hover:border-muted/40"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate font-medium">
+          <h3 className="truncate text-sm font-semibold">
             {href ? (
               <a
                 href={href}
@@ -78,28 +88,37 @@ export function ApplicationCard({
           </h3>
           <p className="truncate text-sm text-muted">{role}</p>
         </div>
-        <div className="-m-1 flex shrink-0">
+        {/* Always visible on touch screens; on hover/focus with a mouse. */}
+        <div className="-m-1 flex shrink-0 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
           <button
             type="button"
             onClick={() => setEditing(true)}
             aria-label={`Edit ${label}`}
-            className="rounded p-1 text-muted hover:bg-mist hover:text-pine"
+            className={iconButton}
           >
-            ✎
+            <PencilIcon width={14} height={14} />
           </button>
           <button
             type="button"
             onClick={onDelete}
             aria-label={`Delete ${label}`}
-            className="rounded p-1 text-muted hover:bg-mist hover:text-pine"
+            className={iconButton}
           >
-            ✕
+            <TrashIcon width={14} height={14} />
           </button>
         </div>
       </div>
 
-      {deadline && (
-        <p className="mt-2 text-xs text-muted">Due {formatDate(deadline)}</p>
+      {due && (
+        <p
+          className={cx(
+            "mt-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium",
+            DEADLINE_TONES[due.tone],
+          )}
+        >
+          <CalendarIcon width={12} height={12} />
+          {due.label}
+        </p>
       )}
       {notes && (
         <p className="mt-2 line-clamp-2 text-xs whitespace-pre-line text-muted">
@@ -108,12 +127,12 @@ export function ApplicationCard({
       )}
 
       {/* The way to move a card between columns: works with touch, mouse and keyboard. */}
-      <label className="mt-3 block text-xs text-muted">
+      <label className="mt-3 block">
         <span className="sr-only">Status for {label}</span>
         <select
           value={status}
           onChange={(e) => onStatusChange(e.target.value as ApplicationStatus)}
-          className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-pine"
+          className={cx(controlClass, "h-8 py-1 text-xs")}
         >
           {APPLICATION_STATUSES.map((s) => (
             <option key={s} value={s}>

@@ -6,8 +6,17 @@ import {
   ApiError,
   type Application,
   createApplication,
+  createPosting,
   deleteApplication,
+  deletePosting,
+  extractPdfText,
+  getCv,
+  getLatestFit,
+  getPosting,
   listApplications,
+  listPostings,
+  saveCv,
+  saveManualFit,
   updateApplication,
 } from "./api";
 
@@ -197,5 +206,124 @@ describe("failures", () => {
 
     await expect(listApplications()).rejects.toThrow(/NEXT_PUBLIC_API_URL/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("CV", () => {
+  const cv = {
+    content: "Ada Example",
+    format: "text",
+    updated_at: "2026-10-21T15:30:00Z",
+  };
+
+  test("getCv returns the CV, or null when there isn't one yet (404)", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(cv));
+    await expect(getCv()).resolves.toEqual(cv);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "No CV yet" }, 404));
+    await expect(getCv()).resolves.toBeNull();
+  });
+
+  test("getCv still rejects on other errors", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ detail: "Boom" }, 500));
+
+    await expect(getCv()).rejects.toMatchObject({ status: 500 });
+  });
+
+  test("saveCv PUTs the content and format", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(cv));
+
+    await saveCv("Ada Example", "text");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/cv");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      content: "Ada Example",
+      format: "text",
+    });
+  });
+
+  test("extractPdfText sends the raw PDF, not JSON, with the token", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ text: "Ada", pages: 1 }));
+    const file = new Blob(["%PDF-1.4"], { type: "application/pdf" });
+
+    await expect(extractPdfText(file)).resolves.toEqual({
+      text: "Ada",
+      pages: 1,
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/cv/pdf");
+    expect(init?.body).toBe(file);
+    expect(init?.headers).toMatchObject({
+      "Content-Type": "application/pdf",
+      Authorization: "Bearer test-jwt",
+    });
+  });
+});
+
+describe("postings", () => {
+  const posting = {
+    id: 7,
+    title: "ML Intern",
+    company: "Globex",
+    location: null,
+    url: null,
+    description: "Python",
+    created_at: "2026-10-21T10:00:00Z",
+  };
+
+  test("list, get, create and delete hit the right URLs and methods", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([posting]));
+    await expect(listPostings()).resolves.toEqual([posting]);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/postings");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(posting));
+    await getPosting(7);
+    expect(fetchMock.mock.calls[1][0]).toBe("http://api.test/postings/7");
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(posting, 201));
+    await createPosting({
+      title: "ML Intern",
+      company: "Globex",
+      description: "Python",
+    });
+    expect(fetchMock.mock.calls[2][1]?.method).toBe("POST");
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(deletePosting(7)).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[3][1]?.method).toBe("DELETE");
+  });
+
+  test("someone else's posting is a 404 like a missing one", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ detail: "Posting not found" }, 404),
+    );
+
+    await expect(getPosting(99)).rejects.toMatchObject({
+      status: 404,
+      message: "Posting not found",
+    });
+  });
+});
+
+describe("fit", () => {
+  test("getLatestFit returns null when the posting was never analysed (404)", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ detail: "No analysis yet" }, 404),
+    );
+
+    await expect(getLatestFit(7)).resolves.toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/postings/7/fit");
+  });
+
+  test("saveManualFit POSTs the pasted answer as JSON", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
+
+    await saveManualFit(7, '{"score": 72}');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://api.test/postings/7/fit/manual");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      answer: '{"score": 72}',
+    });
   });
 });

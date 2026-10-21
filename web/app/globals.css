@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /* Offerpath palette (from the design mockup): pine ink text, sage accents, mist background.
-   @theme turns each --color-* into Tailwind utilities, e.g. bg-mist, text-pine, border-line. */
+   @theme turns each --color-* into Tailwind utilities, e.g. bg-mist, text-pine, border-line.
+   Status hues are muted on purpose and always paired with a text label (never color alone). */
 @theme {
   --color-pine: #24312a;
   --color-sage: #3e6b4f;
@@ -13,6 +14,10 @@
   --color-muted: #5c665e;
   --color-amber: #9a5b13;
   --color-amber-soft: #f6e7cf;
+  --color-sky: #2f5d7c;
+  --color-sky-soft: #dde8ef;
+  --color-rose: #9b3b3b;
+  --color-rose-soft: #f3dfdc;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -20,4 +25,14 @@
 body {
   background: var(--color-mist);
   color: var(--color-pine);
+}
+
+/* Keyboard users see where they are; mouse clicks don't leave a ring behind. */
+:focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-sage-soft);
 }

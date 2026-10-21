@@ -3,6 +3,10 @@
 import { type FormEvent, useState } from "react";
 
 import type { Application, ApplicationUpdate } from "@/lib/api";
+import { cx } from "@/lib/cx";
+
+import { Button } from "./ui/Button";
+import { controlClass } from "./ui/Field";
 
 interface EditApplicationFormProps {
   application: Application;
@@ -11,8 +15,7 @@ interface EditApplicationFormProps {
   onCancel: () => void;
 }
 
-const inputClass =
-  "mt-0.5 w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-pine";
+const inputClass = cx(controlClass, "mt-1 px-2 py-1.5");
 
 /** Empty optional fields are sent as null, so clearing a field clears it in the database. */
 function optional(fields: FormData, name: string): string | null {
@@ -56,7 +59,7 @@ export function EditApplicationForm({
       aria-label={`Edit ${application.company}, ${application.role}`}
       className="flex flex-col gap-2"
     >
-      <label className="text-xs text-muted">
+      <label className="text-xs font-medium text-muted">
         Company
         <input
           name="company"
@@ -66,7 +69,7 @@ export function EditApplicationForm({
           className={inputClass}
         />
       </label>
-      <label className="text-xs text-muted">
+      <label className="text-xs font-medium text-muted">
         Role
         <input
           name="role"
@@ -76,7 +79,7 @@ export function EditApplicationForm({
           className={inputClass}
         />
       </label>
-      <label className="text-xs text-muted">
+      <label className="text-xs font-medium text-muted">
         Posting URL
         <input
           name="url"
@@ -87,7 +90,7 @@ export function EditApplicationForm({
         />
       </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-muted">
+        <label className="text-xs font-medium text-muted">
           Applied on
           <input
             name="applied_at"
@@ -96,7 +99,7 @@ export function EditApplicationForm({
             className={inputClass}
           />
         </label>
-        <label className="text-xs text-muted">
+        <label className="text-xs font-medium text-muted">
           Deadline
           <input
             name="deadline"
@@ -106,7 +109,7 @@ export function EditApplicationForm({
           />
         </label>
       </div>
-      <label className="text-xs text-muted">
+      <label className="text-xs font-medium text-muted">
         CV version
         <input
           name="cv_version"
@@ -115,7 +118,7 @@ export function EditApplicationForm({
           className={inputClass}
         />
       </label>
-      <label className="text-xs text-muted">
+      <label className="text-xs font-medium text-muted">
         Notes
         <textarea
           name="notes"
@@ -126,26 +129,24 @@ export function EditApplicationForm({
       </label>
 
       {error && (
-        <p role="alert" className="text-sm text-amber">
+        <p role="alert" className="text-sm text-rose">
           {error}
         </p>
       )}
 
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md px-3 py-1.5 text-sm text-muted hover:bg-mist hover:text-pine"
-        >
+        <Button variant="ghost" size="sm" onClick={onCancel}>
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
+          variant="primary"
+          size="sm"
           disabled={submitting}
-          className="rounded-md bg-sage px-3 py-1.5 text-sm font-medium text-white hover:bg-sage-dark disabled:opacity-60"
+          aria-label="Save"
         >
           {submitting ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </div>
     </form>
   );

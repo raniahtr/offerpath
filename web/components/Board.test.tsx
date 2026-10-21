@@ -59,6 +59,13 @@ async function renderBoard(applications: Application[] = [acme, globex]) {
   await screen.findByRole("region", { name: /^Saved/ });
 }
 
+// Deadline labels depend on today's date: fix it (only Date, so userEvent's timers still run).
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 21));
+  return () => vi.useRealTimers();
+});
+
 beforeEach(() => {
   vi.spyOn(window, "confirm").mockReturnValue(true);
 });
